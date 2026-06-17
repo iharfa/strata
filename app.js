@@ -1,4 +1,8 @@
+import { inject } from '@vercel/analytics';
 import * as pdfjsLib from "./vendor/pdf.min.mjs";
+
+// Initialize Vercel Web Analytics
+inject();
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.mjs";
 
