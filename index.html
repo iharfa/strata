@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Client-side strata PDF splitter for machine-readable AutoCAD plan PDFs."
+    />
+    <title>Strata PDF Splitter</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="toolbar">
+        <div>
+          <p class="eyebrow">Client-side PDF processing</p>
+          <h1>Strata PDF Splitter</h1>
+          <p class="lede">
+            Split machine-readable AutoCAD strata plans into unit PDFs, then export a
+            review folder and Excel log.
+          </p>
+        </div>
+
+        <div class="privacy-pill">PDF files stay in your browser</div>
+      </section>
+
+      <section class="workspace">
+        <aside class="controls-panel">
+          <div class="field-group">
+            <label for="pdf-file">Source PDF</label>
+            <input id="pdf-file" type="file" accept="application/pdf" />
+            <p class="file-name" id="file-name"></p>
+          </div>
+
+          <div class="settings-grid">
+            <div class="field-group">
+              <label for="prefix">Project prefix</label>
+              <input id="prefix" value="H5" />
+            </div>
+
+            <div class="field-group">
+              <label for="first-segment">First segment length</label>
+              <input id="first-segment" type="number" min="1" max="6" value="2" />
+            </div>
+
+            <div class="field-group">
+              <label for="second-segment">Second segment length</label>
+              <input id="second-segment" type="number" min="1" max="6" value="2" />
+            </div>
+
+            <div class="field-group">
+              <label for="marker">Title block marker</label>
+              <input id="marker" value="STRATA UNIT DETAILS" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="custom-regex">Custom regex override</label>
+            <textarea
+              id="custom-regex"
+              rows="3"
+              placeholder="Leave blank to use the pattern builder"
+            ></textarea>
+          </div>
+
+          <div class="regex-preview">
+            <span>Active pattern</span>
+            <code id="regex-preview">H5-[A-Z0-9]{2}-[A-Z0-9]{2}</code>
+          </div>
+
+          <div class="button-row">
+            <button type="button" class="primary" id="scan-button" disabled>Scan PDF</button>
+            <button type="button" class="secondary" id="zip-button" disabled>Download ZIP</button>
+          </div>
+
+          <div class="progress-wrap" id="progress-wrap" aria-label="Scan progress" hidden>
+            <div class="progress-bar" id="progress-bar"></div>
+            <span id="progress-text">0 / 0</span>
+          </div>
+
+          <p class="message" id="message"></p>
+        </aside>
+
+        <section class="results-panel">
+          <div class="summary-grid">
+            <div>
+              <span>Total pages</span>
+              <strong id="summary-total">0</strong>
+            </div>
+            <div>
+              <span>Ready</span>
+              <strong id="summary-success">0</strong>
+            </div>
+            <div>
+              <span>Review</span>
+              <strong id="summary-review">0</strong>
+            </div>
+            <div>
+              <span>Duplicates</span>
+              <strong id="summary-duplicates">0</strong>
+            </div>
+          </div>
+
+          <div class="alert" id="duplicate-alert" hidden></div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Page</th>
+                  <th>Detected code</th>
+                  <th>Manual override</th>
+                  <th>Status</th>
+                  <th>Issue</th>
+                  <th>Output file</th>
+                  <th>Preview</th>
+                </tr>
+              </thead>
+              <tbody id="results-body">
+                <tr>
+                  <td colspan="7" class="empty-state">
+                    Select a PDF and scan it to see page-level results.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="preview-panel">
+        <div>
+          <p class="eyebrow">Page preview</p>
+          <h2 id="preview-title">No page selected</h2>
+        </div>
+        <canvas id="preview-canvas"></canvas>
+      </section>
+    </main>
+
+    <script src="/vendor/pdf-lib.min.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
