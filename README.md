@@ -51,16 +51,3 @@ npm run build
 ```
 
 The build step does not bundle anything. It only confirms the static app is ready. The PDF libraries are already vendored in `vendor/`.
-
-## Deploy to Vercel
-
-1. Upload this folder to a GitHub repository.
-2. Connect the repository in Vercel.
-3. Use the default project settings.
-4. Deploy.
-
-Vercel only hosts the app files. The selected PDF stays on the user's computer and is processed inside Chrome or Edge.
-
-## Suggested access control
-
-For internal office use, keep the GitHub repository private and use Vercel project protection or SSO if available. If you want a simple shared-password screen inside the app, add it before the PDF selector.
