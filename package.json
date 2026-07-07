@@ -6,8 +6,5 @@
   "scripts": {
     "build": "node -e \"console.log('Static app ready for Vercel')\"",
     "preview": "python3 -m http.server 4173"
-  },
-  "dependencies": {
-    "@vercel/analytics": "^2.0.1"
   }
 }
