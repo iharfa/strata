@@ -12,61 +12,77 @@
   </head>
   <body>
     <main class="app-shell">
-      <section class="toolbar">
-        <div>
+      <header class="masthead">
+        <div class="masthead-copy">
           <p class="eyebrow">Client-side PDF processing</p>
-          <h1>Strata PDF Splitter</h1>
+          <h1>Strata <em>Splitter</em></h1>
           <p class="lede">
             Split machine-readable AutoCAD strata plans into unit PDFs, then export a
-            review folder and Excel log.
+            review folder and Excel log &mdash; entirely in your browser.
           </p>
         </div>
 
-        <div class="privacy-pill">PDF files stay in your browser</div>
-      </section>
+        <div class="masthead-side">
+          <div class="privacy-pill">
+            <span class="pill-dot" aria-hidden="true"></span>
+            PDF files never leave your browser
+          </div>
+        </div>
+      </header>
 
       <section class="workspace">
         <aside class="controls-panel">
+          <div class="panel-heading">
+            <span class="panel-index">01</span>
+            <h2>Source &amp; convention</h2>
+          </div>
+
           <div class="field-group">
             <label for="pdf-file">Source PDF</label>
             <input id="pdf-file" type="file" accept="application/pdf" />
             <p class="file-name" id="file-name"></p>
           </div>
 
-          <div class="settings-grid">
-            <div class="field-group">
-              <label for="prefix">Project prefix</label>
-              <input id="prefix" value="H5" />
-            </div>
+          <div class="field-group">
+            <label for="preset">Naming convention preset</label>
+            <select id="preset"></select>
+          </div>
 
-            <div class="field-group">
-              <label for="first-segment">First segment length</label>
-              <input id="first-segment" type="number" min="1" max="6" value="2" />
+          <div class="segment-builder">
+            <div class="segment-toolbar">
+              <span class="mini-label">Code segments &mdash; in order</span>
+              <button type="button" class="ghost-button" id="add-segment">+ Segment</button>
             </div>
-
-            <div class="field-group">
-              <label for="second-segment">Second segment length</label>
-              <input id="second-segment" type="number" min="1" max="6" value="2" />
-            </div>
-
-            <div class="field-group">
-              <label for="marker">Title block marker</label>
-              <input id="marker" value="STRATA UNIT DETAILS" />
-            </div>
+            <div id="segment-list" class="segment-list"></div>
+            <p class="hint">
+              Build the unit code piece by piece: fixed text, letters, or digits with a
+              min&ndash;max length. Variable-length pieces (e.g. floor 2 vs 12) are supported.
+            </p>
           </div>
 
           <div class="field-group">
-            <label for="custom-regex">Custom regex override</label>
-            <textarea
-              id="custom-regex"
-              rows="3"
-              placeholder="Leave blank to use the pattern builder"
-            ></textarea>
+            <label for="marker">Title block marker</label>
+            <input id="marker" value="STRATA UNIT DETAILS" />
           </div>
 
+          <details class="advanced">
+            <summary>Custom regex override</summary>
+            <div class="field-group">
+              <textarea
+                id="custom-regex"
+                rows="3"
+                placeholder="Leave blank to use the segment builder"
+              ></textarea>
+            </div>
+          </details>
+
           <div class="regex-preview">
-            <span>Active pattern</span>
-            <code id="regex-preview">H5-[A-Z0-9]{2}-[A-Z0-9]{2}</code>
+            <span class="mini-label">Active pattern</span>
+            <code id="regex-preview"></code>
+            <div class="sample-tester">
+              <input id="sample-code" placeholder="Test a code, e.g. R2A-202" autocomplete="off" />
+              <span id="sample-result" class="sample-result" aria-live="polite"></span>
+            </div>
           </div>
 
           <div class="button-row">
@@ -83,6 +99,11 @@
         </aside>
 
         <section class="results-panel">
+          <div class="panel-heading padded">
+            <span class="panel-index">02</span>
+            <h2>Page results</h2>
+          </div>
+
           <div class="summary-grid">
             <div>
               <span>Total pages</span>
@@ -130,12 +151,22 @@
       </section>
 
       <section class="preview-panel">
-        <div>
-          <p class="eyebrow">Page preview</p>
-          <h2 id="preview-title">No page selected</h2>
+        <div class="preview-meta">
+          <div class="panel-heading">
+            <span class="panel-index">03</span>
+            <h2 id="preview-title">No page selected</h2>
+          </div>
+          <p class="hint">
+            Click <strong>View</strong> on any row to inspect the drawing before export.
+          </p>
         </div>
         <canvas id="preview-canvas"></canvas>
       </section>
+
+      <footer class="footnote">
+        <span>Strata PDF Splitter</span>
+        <span>Processing happens locally &mdash; nothing is uploaded.</span>
+      </footer>
     </main>
 
     <script src="/vendor/pdf-lib.min.js"></script>

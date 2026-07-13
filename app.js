@@ -6,21 +6,55 @@ const { PDFDocument } = window.PDFLib;
 
 const OUTPUT_FOLDER = "Strata_Output";
 const REVIEW_FOLDER = "Review_Folder";
+const SETTINGS_KEY = "strata-splitter-settings-v2";
+
+const SEGMENT_TYPES = {
+  text: "Fixed text",
+  letters: "Letters (A–Z)",
+  digits: "Digits (0–9)",
+  alnum: "Letters or digits"
+};
+
+const PRESETS = {
+  classic: {
+    label: "Classic — H5-0G-01",
+    segments: [
+      { type: "text", value: "H5", name: "Project" },
+      { type: "text", value: "-", name: "" },
+      { type: "alnum", min: 2, max: 2, name: "Floor" },
+      { type: "text", value: "-", name: "" },
+      { type: "alnum", min: 2, max: 2, name: "Unit" }
+    ]
+  },
+  tower: {
+    label: "Tower block — R2A-201 / R2B-1307",
+    segments: [
+      { type: "text", value: "R2", name: "Project" },
+      { type: "letters", min: 1, max: 1, name: "Block" },
+      { type: "text", value: "-", name: "" },
+      { type: "digits", min: 1, max: 2, name: "Floor" },
+      { type: "digits", min: 2, max: 2, name: "Unit" }
+    ]
+  }
+};
 
 const state = {
   fileName: "",
   fileBuffer: null,
   rows: [],
   evaluatedRows: [],
-  busy: false
+  busy: false,
+  segments: structuredClone(PRESETS.classic.segments)
 };
 
 const elements = {
   fileInput: document.getElementById("pdf-file"),
   fileName: document.getElementById("file-name"),
-  prefix: document.getElementById("prefix"),
-  firstSegment: document.getElementById("first-segment"),
-  secondSegment: document.getElementById("second-segment"),
+  preset: document.getElementById("preset"),
+  segmentList: document.getElementById("segment-list"),
+  addSegment: document.getElementById("add-segment"),
+  sampleCode: document.getElementById("sample-code"),
+  sampleResult: document.getElementById("sample-result"),
   marker: document.getElementById("marker"),
   customRegex: document.getElementById("custom-regex"),
   regexPreview: document.getElementById("regex-preview"),
@@ -74,11 +108,40 @@ function uniqueValues(values) {
   return [...new Set(values.map(cleanCode).filter(Boolean))];
 }
 
+function clampLength(value, fallback = 1) {
+  const number = Math.floor(Number(value));
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(Math.max(number, 1), 8);
+}
+
+function normalizeSegment(segment) {
+  const type = SEGMENT_TYPES[segment?.type] ? segment.type : "text";
+  const name = String(segment?.name || "").slice(0, 24);
+
+  if (type === "text") {
+    return { type, value: cleanCode(segment?.value || ""), name };
+  }
+
+  const min = clampLength(segment?.min);
+  const max = Math.max(clampLength(segment?.max, min), min);
+  return { type, min, max, name };
+}
+
+function segmentToRegex(segment) {
+  if (segment.type === "text") {
+    return escapeRegex(segment.value);
+  }
+
+  const characterClass =
+    segment.type === "letters" ? "[A-Z]" : segment.type === "digits" ? "[0-9]" : "[A-Z0-9]";
+  const quantifier =
+    segment.min === segment.max ? `{${segment.min}}` : `{${segment.min},${segment.max}}`;
+  return `${characterClass}${quantifier}`;
+}
+
 function getSettings() {
   return {
-    prefix: cleanCode(elements.prefix.value || "H5"),
-    firstSegmentLength: Number(elements.firstSegment.value) || 2,
-    secondSegmentLength: Number(elements.secondSegment.value) || 2,
+    segments: state.segments.map(normalizeSegment),
     customRegex: elements.customRegex.value.trim(),
     titleMarker: elements.marker.value.trim() || "STRATA UNIT DETAILS",
     contextWindow: 260
@@ -90,9 +153,7 @@ function getRegexSource(settings = getSettings()) {
     return settings.customRegex;
   }
 
-  const first = `[A-Z0-9]{${settings.firstSegmentLength}}`;
-  const second = `[A-Z0-9]{${settings.secondSegmentLength}}`;
-  return `${escapeRegex(settings.prefix)}-${first}-${second}`;
+  return settings.segments.map(segmentToRegex).join("");
 }
 
 function getCodeRegex(settings = getSettings()) {
@@ -236,6 +297,24 @@ function setMessage(value) {
   elements.message.textContent = value || "";
 }
 
+function updateSampleTester() {
+  const sample = cleanCode(elements.sampleCode.value);
+  if (!sample) {
+    elements.sampleResult.textContent = "";
+    elements.sampleResult.className = "sample-result";
+    return;
+  }
+
+  try {
+    const matches = new RegExp(`^(?:${getRegexSource()})$`, "i").test(sample);
+    elements.sampleResult.textContent = matches ? "Match" : "No match";
+    elements.sampleResult.className = `sample-result ${matches ? "pass" : "fail"}`;
+  } catch (error) {
+    elements.sampleResult.textContent = "Invalid pattern";
+    elements.sampleResult.className = "sample-result fail";
+  }
+}
+
 function updateRegexPreview() {
   try {
     elements.regexPreview.textContent = getRegexSource();
@@ -245,6 +324,168 @@ function updateRegexPreview() {
     elements.regexPreview.textContent = "Invalid regex";
     setMessage(`Regex error: ${error.message}`);
   }
+  updateSampleTester();
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({
+        segments: state.segments,
+        marker: elements.marker.value,
+        customRegex: elements.customRegex.value,
+        preset: elements.preset.value
+      })
+    );
+  } catch (error) {
+    // Storage may be unavailable (private mode); settings simply won't persist.
+  }
+}
+
+function loadSettings() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
+    if (!stored) return;
+    if (Array.isArray(stored.segments) && stored.segments.length) {
+      state.segments = stored.segments.map(normalizeSegment);
+    }
+    if (typeof stored.marker === "string" && stored.marker.trim()) {
+      elements.marker.value = stored.marker;
+    }
+    if (typeof stored.customRegex === "string") {
+      elements.customRegex.value = stored.customRegex;
+    }
+    if (stored.preset && (PRESETS[stored.preset] || stored.preset === "custom")) {
+      elements.preset.value = stored.preset;
+    }
+  } catch (error) {
+    // Ignore corrupted stored settings and fall back to defaults.
+  }
+}
+
+function matchingPresetKey() {
+  const current = JSON.stringify(state.segments.map(normalizeSegment));
+  return (
+    Object.keys(PRESETS).find(
+      (key) => JSON.stringify(PRESETS[key].segments.map(normalizeSegment)) === current
+    ) || "custom"
+  );
+}
+
+function onSettingsChanged() {
+  elements.preset.value = matchingPresetKey();
+  updateRegexPreview();
+  saveSettings();
+  if (state.rows.length) {
+    refreshResults();
+  }
+}
+
+function segmentFieldControls(segment, index) {
+  if (segment.type === "text") {
+    return `<input class="segment-value" data-index="${index}" data-field="value" value="${escapeXml(
+      segment.value
+    )}" placeholder="Text, e.g. R2 or -" />`;
+  }
+
+  return `
+    <div class="segment-lengths">
+      <input type="number" min="1" max="8" data-index="${index}" data-field="min" value="${segment.min}" aria-label="Minimum length" />
+      <span>&ndash;</span>
+      <input type="number" min="1" max="8" data-index="${index}" data-field="max" value="${segment.max}" aria-label="Maximum length" />
+    </div>`;
+}
+
+function renderSegments() {
+  state.segments = state.segments.map(normalizeSegment);
+
+  elements.segmentList.innerHTML = state.segments
+    .map((segment, index) => {
+      const typeOptions = Object.entries(SEGMENT_TYPES)
+        .map(
+          ([key, label]) =>
+            `<option value="${key}"${key === segment.type ? " selected" : ""}>${label}</option>`
+        )
+        .join("");
+
+      return `
+        <div class="segment-row">
+          <select data-index="${index}" data-field="type">${typeOptions}</select>
+          ${segmentFieldControls(segment, index)}
+          <input class="segment-name" data-index="${index}" data-field="name" value="${escapeXml(
+            segment.name || ""
+          )}" placeholder="Label" />
+          <div class="segment-actions">
+            <button type="button" class="icon-button" data-move="-1" data-index="${index}" title="Move up" ${
+              index === 0 ? "disabled" : ""
+            }>&uarr;</button>
+            <button type="button" class="icon-button" data-move="1" data-index="${index}" title="Move down" ${
+              index === state.segments.length - 1 ? "disabled" : ""
+            }>&darr;</button>
+            <button type="button" class="icon-button danger" data-remove="${index}" title="Remove segment" ${
+              state.segments.length === 1 ? "disabled" : ""
+            }>&times;</button>
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  elements.segmentList.querySelectorAll("[data-field]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const index = Number(event.target.dataset.index);
+      const field = event.target.dataset.field;
+      const segment = state.segments[index];
+      if (!segment) return;
+
+      if (field === "type") {
+        const nextType = event.target.value;
+        state.segments[index] = normalizeSegment({ ...segment, type: nextType });
+        renderSegments();
+      } else if (field === "value" || field === "name") {
+        segment[field] = event.target.value;
+      } else {
+        segment[field] = event.target.value;
+      }
+
+      onSettingsChanged();
+    });
+
+    input.addEventListener("change", () => {
+      state.segments = state.segments.map(normalizeSegment);
+      renderSegments();
+      onSettingsChanged();
+    });
+  });
+
+  elements.segmentList.querySelectorAll("[data-move]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.index);
+      const target = index + Number(button.dataset.move);
+      if (target < 0 || target >= state.segments.length) return;
+      [state.segments[index], state.segments[target]] = [
+        state.segments[target],
+        state.segments[index]
+      ];
+      renderSegments();
+      onSettingsChanged();
+    });
+  });
+
+  elements.segmentList.querySelectorAll("[data-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.segments.splice(Number(button.dataset.remove), 1);
+      renderSegments();
+      onSettingsChanged();
+    });
+  });
+}
+
+function renderPresetOptions() {
+  elements.preset.innerHTML = [
+    ...Object.entries(PRESETS).map(([key, preset]) => `<option value="${key}">${preset.label}</option>`),
+    '<option value="custom">Custom</option>'
+  ].join("");
 }
 
 function updateProgress(done, total) {
@@ -765,19 +1006,42 @@ elements.fileInput.addEventListener("change", async (event) => {
   refreshResults();
 });
 
-[elements.prefix, elements.firstSegment, elements.secondSegment, elements.marker, elements.customRegex].forEach(
-  (input) => {
-    input.addEventListener("input", () => {
-      updateRegexPreview();
-      if (state.rows.length) {
-        refreshResults();
-      }
-    });
+[elements.marker, elements.customRegex].forEach((input) => {
+  input.addEventListener("input", () => {
+    updateRegexPreview();
+    saveSettings();
+    if (state.rows.length) {
+      refreshResults();
+    }
+  });
+});
+
+elements.preset.addEventListener("change", () => {
+  const preset = PRESETS[elements.preset.value];
+  if (!preset) return;
+  state.segments = structuredClone(preset.segments);
+  renderSegments();
+  updateRegexPreview();
+  saveSettings();
+  if (state.rows.length) {
+    refreshResults();
   }
-);
+});
+
+elements.addSegment.addEventListener("click", () => {
+  state.segments.push({ type: "digits", min: 2, max: 2, name: "" });
+  renderSegments();
+  onSettingsChanged();
+});
+
+elements.sampleCode.addEventListener("input", updateSampleTester);
 
 elements.scanButton.addEventListener("click", scanPdf);
 elements.zipButton.addEventListener("click", generateZip);
 
+renderPresetOptions();
+loadSettings();
+renderSegments();
+elements.preset.value = matchingPresetKey();
 updateRegexPreview();
 refreshResults();

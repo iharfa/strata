@@ -18,23 +18,29 @@ The PDF is processed in the user's browser. It is not uploaded to Vercel or any 
   - `Review_Folder/` for pages with issues
   - `processing_log.xlsx`
 
-## Default pattern
+## Naming conventions
 
-The default unit code pattern is:
+Unit codes are described with a dynamic segment builder. A code is a sequence of
+segments, each one of:
 
-```text
-H5-[A-Z0-9]{2}-[A-Z0-9]{2}
-```
+- **Fixed text** — a literal piece such as `H5`, `R2`, or `-`
+- **Letters (A–Z)** — with a min–max length
+- **Digits (0–9)** — with a min–max length
+- **Letters or digits** — with a min–max length
 
-Examples:
+Variable-length segments are supported, so codes like `R2A-201` and `R2A-1201`
+(floor 2 vs floor 12) match the same convention.
 
-```text
-H5-0G-01
-H5-01-01
-H5-01-02
-```
+Two presets ship with the app:
 
-You can change the prefix and segment lengths in the app. You can also provide a custom regex override.
+| Preset | Segments | Examples |
+| --- | --- | --- |
+| Classic | `H5` + `-` + 2 alphanumeric + `-` + 2 alphanumeric | `H5-0G-01`, `H5-01-02` |
+| Tower block | `R2` + 1 letter (block) + `-` + 1–2 digits (floor) + 2 digits (unit) | `R2A-201`, `R2B-1307` |
+
+Editing any segment switches the preset to **Custom**. Settings persist in
+`localStorage`. A live pattern preview and a "test a code" box show whether a
+sample code matches. You can also provide a custom regex override.
 
 ## Run locally
 
